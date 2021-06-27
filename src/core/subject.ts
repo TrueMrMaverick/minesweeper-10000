@@ -5,6 +5,10 @@ export class Subject<T> implements Observable<T> {
     constructor(private value: T) {
     }
 
+    get currentValue() {
+        return this.value;
+    }
+
     next(value: T): void {
         this.value = value;
         this.subscribers.forEach((notifier) => notifier(this.value));
@@ -18,6 +22,8 @@ export class Subject<T> implements Observable<T> {
         const index = this.nextSubIndex;
         this.nextSubIndex += 1;
         this.subscribers.set(index, next);
+
+        next(this.value);
 
         return {
             unsubscribe: () => {

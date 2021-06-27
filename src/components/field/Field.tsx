@@ -4,20 +4,24 @@ import {Cell} from "../cell/Cell";
 import {AutoSizer, Grid} from "react-virtualized";
 
 export const Field = React.memo(function Field() {
-    const [width, setWidth] = useState(10000);
-    const [height, setHeight] = useState(10000)
+    const [width, setWidth] = useState(50);
+    const [height, setHeight] = useState(50);
+    const [mineCount, setMineCount] = useState(15 * 15);
 
     const [map, setMap] = useState<MinesweeperMap | undefined>(undefined);
+    const [isMapReady, setIsMapReady] = useState(false)
 
 
     useEffect(() => {
-        MinesweeperMap.generateMap(width, height).then(result => setMap(result));
-    }, [height, width])
+        const map = new MinesweeperMap(width, height, mineCount);
+        setMap(map)
+        map.generate().then(() => setIsMapReady(true))
+        return () => map.destroy();
+    }, [])
 
-    if (!map) {
+    if (!map || !isMapReady) {
         return <></>;
     }
-
 
     return (
         <AutoSizer style={{width: '100%', height: '100vh'}}>
@@ -29,10 +33,23 @@ export const Field = React.memo(function Field() {
                           height={gridHeight}
                           width={gridWidth}
                           columnWidth={25}
-                          cellRenderer={({columnIndex, rowIndex, key, style}) => (
-                              <Cell style={style} key={key} value={map?.getCellValueXY(columnIndex, rowIndex)}
-                                    onClick={() => console.log(`Clicked cell ${key}`)}/>)}/>
-                )
+                          onSectionRendered={({columnStartIndex, columnStopIndex, rowStartIndex, rowStopIndex}) => {
+                              map?.calculateNeighboursInRange(
+                                  {start: columnStartIndex, end: columnStopIndex},
+                                  {start: rowStartIndex, end: rowStopIndex}
+                              )
+                              // console.log('onSectionRendered column: ', columnStartIndex, columnStopIndex);
+                              // console.log('onSectionRendered row: ', rowStartIndex, rowStopIndex);
+                          }}
+                          cellRenderer={({columnIndex, rowIndex, key, style}) => {
+
+                              const cell = map?.getCell(columnIndex, rowIndex);
+
+                              return (
+                                  <Cell style={style} key={key} cellService={cell}
+                                        onClick={() => console.log(`Clicked cell ${key}`)}/>)
+                          }}
+                    />)
             }
         </AutoSizer>
     );
