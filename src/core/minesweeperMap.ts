@@ -1,8 +1,9 @@
 // eslint-disable-next-line import/no-webpack-loader-syntax
 import {proxy, releaseProxy, Remote, wrap} from "comlink";
 import {CellService} from "./cellService";
-import {Subject} from "./subject";
+import {Observable, Subject} from "./subject";
 import {GenerateMapWorker} from "./workers/mapGenerator";
+import {Stack} from "./unils/stack";
 
 
 export class MinesweeperMap {
@@ -22,6 +23,12 @@ export class MinesweeperMap {
 
     private firstClick: boolean = true;
     private emptyCellIndex?: number;
+
+    private loadingSubj = new Subject(true);
+
+    get loading$(): Observable<boolean> {
+        return this.loadingSubj;
+    }
 
     constructor(width: number, height: number, mineCount: number, private threadsNumber = 4) {
         this._width = width;
@@ -47,8 +54,8 @@ export class MinesweeperMap {
         this._chunkedArray = new Int8Array(this._arrayBuffer);
 
         this._chunkedArray
-            .fill(10, 0, mineCount)
-            .fill(-1, mineCount);
+            .fill(CellValue.mine, 0, mineCount)
+            .fill(CellValue.notDefined, mineCount);
 
         for (let i = 0; i < this.threadsNumber; i++) {
             const worker = new Worker('./workers/mapGenerator', {name: `map-generator-worker-${i}`, type: 'module'});
@@ -67,19 +74,17 @@ export class MinesweeperMap {
     }
 
     async generate() {
+        this.loadingSubj.next(true);
         const t0 = performance.now();
         let arr = await Promise.all(this.generators.map((generator, index) => generator.generateMap(index, this.threadsNumber)));
+        await this.calculateNeighboursInRange({start: 0, end: this._width - 1}, {start: 0, end: this._height - 1});
         const t1 = performance.now();
         console.log(`Map generated in ${t1 - t0} milliseconds.`);
 
         arr = arr.filter(val => val !== undefined);
         this.emptyCellIndex = arr[Math.floor(Math.random() * (arr.length - 1))];
 
-        // TODO: remove
-        this.cashedCells.forEach((cashedCell, key) => {
-            const [columnIndex, rowIndex] = key.split('_').map(val => +val);
-            (cashedCell.value$ as Subject<CellValue>).next(this.getCellValueXY(columnIndex, rowIndex))
-        })
+        this.loadingSubj.next(false);
     }
 
     getCell(columnIndex: number, rowIndex: number): CellService {
@@ -89,44 +94,63 @@ export class MinesweeperMap {
         }
 
         const value = this.getCellValueXY(columnIndex, rowIndex);
-        const valueSubj = new Subject(value);
 
-        const cellService = new CellService(valueSubj, columnIndex, rowIndex, this._height * rowIndex + columnIndex, async () => {
+        const cellService = new CellService(value, columnIndex, rowIndex, this._height * rowIndex + columnIndex, async () => {
 
-            if (this.firstClick && this.emptyCellIndex && this.getCellValueXY(columnIndex, rowIndex) === CellValue.mine) {
+            const cellValue = this.getCellValueXY(columnIndex, rowIndex);
+
+            if (this.firstClick && this.emptyCellIndex && cellValue === CellValue.mine) {
                 const i = this._height * rowIndex + columnIndex;
                 Atomics.store(this._chunkedArray, i, Atomics.exchange(this._chunkedArray, this.emptyCellIndex, Atomics.load(this._chunkedArray, i)));
-                // TODO: remove
-                const cI = this.emptyCellIndex % this._height;
-                const rI = (this.emptyCellIndex - cI) / this._height;
-                const exchangeCellService = this.cashedCells.get(`${cI}_${rI}`);
-                if (!exchangeCellService) {
-                    return;
-                }
-                (exchangeCellService.value$ as Subject<CellValue>).next(this.getCellValue(this.emptyCellIndex));
             }
 
             this.firstClick = false;
 
-            const coveredCells = new Set<string>();
-
-            await this.handleCellClick(coveredCells, columnIndex, rowIndex);
-
-            coveredCells.forEach((key) => {
-
-                const cellService = this.cashedCells.get(key);
-                if (!cellService) {
-                    return;
-                }
-
-                (cellService.value$ as Subject<CellValue>).next(this.getCellValueXY(cellService.columnIndex, cellService.rowIndex));
-                (cellService.state$ as Subject<CellState>).next(CellState.open);
-            })
+            this.chainOpen(cellService);
         });
 
         this.cashedCells.set(`${columnIndex}_${rowIndex}`, cellService);
 
         return cellService;
+    }
+
+    private chainOpen(initiator: CellService) {
+        const stack = new Stack<CellService>();
+        stack.push(initiator);
+
+        while (!stack.isEmpty()) {
+            const cellService = stack.pop();
+            // console.log('Current stack size: ', stack.size);
+            if (!cellService) {
+                break;
+            }
+            const {index, columnIndex, rowIndex, currentState} = cellService;
+            if (currentState === CellState.open) {
+                continue;
+            }
+            const cellValue = this.getCellValue(index);
+            cellService.updateAndOpen(cellValue);
+            if (cellValue !== CellValue.empty) {
+                continue;
+            }
+
+            [
+                this.cashedCells.get(`${columnIndex - 1}_${rowIndex}`),
+                this.cashedCells.get(`${columnIndex + 1}_${rowIndex}`),
+                this.cashedCells.get(`${columnIndex}_${rowIndex - 1}`),
+                this.cashedCells.get(`${columnIndex}_${rowIndex + 1}`),
+                this.cashedCells.get(`${columnIndex - 1}_${rowIndex - 1}`),
+                this.cashedCells.get(`${columnIndex - 1}_${rowIndex + 1}`),
+                this.cashedCells.get(`${columnIndex + 1}_${rowIndex - 1}`),
+                this.cashedCells.get(`${columnIndex + 1}_${rowIndex + 1}`),
+            ].forEach((neighbour) => {
+                if (neighbour) {
+                    stack.push(neighbour);
+                }
+            })
+        }
+
+        console.log('Chain open finished');
     }
 
     async handleCellClick(coveredCells: Set<string>, columnIndex: number, rowIndex: number, initial = false) {
@@ -199,9 +223,26 @@ export class MinesweeperMap {
     }
 
     async calculateNeighboursInRange(columnRange: { start: number, end: number }, rowRange: { start: number, end: number }) {
-        await this.generators[0].calculateNeighboursInRange(this._width, this._height, columnRange, rowRange, proxy(() => {
-
-        }));
+        const t0 = performance.now();
+        await Promise.all(
+            this.generators.map((generator, index) => {
+                return generator.calculateNeighboursInRange(
+                    this._width,
+                    this._height,
+                    columnRange,
+                    rowRange,
+                    index,
+                    // proxy(async (columnIndex, rowIndex) => {
+                    //     const cellService = this.cashedCells.get(`${columnIndex}_${rowIndex}`);
+                    //     if (!cellService) {
+                    //         return;
+                    //     }
+                    // })
+                )
+            })
+        );
+        const t1 = performance.now();
+        console.log(`Range calculated in ${t1 - t0}`);
     }
 
     private async calculateNeighbours(columnIndex: number, rowIndex: number): Promise<CellValue> {
@@ -271,5 +312,5 @@ export enum CellValue {
     six,
     seven,
     eight,
-    mine = 10,
+    mine,
 }

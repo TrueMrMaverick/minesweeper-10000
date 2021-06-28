@@ -11,7 +11,7 @@ enum CellValue {
     six,
     seven,
     eight,
-    mine = 10,
+    mine ,
 }
 
 const exports: GenerateMapWorker = {
@@ -148,7 +148,8 @@ const exports: GenerateMapWorker = {
         if (!this.map) {
             throw new Error('Map is undefined');
         }
-        console.log(`Thread with index ${startingIndex} started`);
+        // eslint-disable-next-line no-restricted-globals
+        console.log(`Thread ${self.name} stated map generation`);
         let emptyCellIndex: number | undefined;
         const map = this.map;
         // const lockedIndices = new Int32Array(this.lockedIndices);
@@ -174,14 +175,25 @@ const exports: GenerateMapWorker = {
     setMap(sharedArray: SharedArrayBuffer) {
         this.map = new Int8Array(sharedArray);
     },
-    calculateNeighboursInRange(width: number, height: number, columnRange: { start: number, end: number }, rowRange: { start: number, end: number }, cb: (val: number) => void) {
-        for (let columnIndex = columnRange.start; columnIndex < columnRange.end; columnIndex++) {
-            for (let rowIndex = rowRange.start; rowIndex < rowRange.end; rowIndex++) {
+    calculateNeighboursInRange(
+        width: number,
+        height: number,
+        columnRange: { start: number, end: number },
+        rowRange: { start: number, end: number },
+        offset: number,
+        cb: (columnIndex: number, rowIndex: number) => Promise<void>
+    ) {
+        // eslint-disable-next-line no-restricted-globals
+        console.log(`Thread ${self.name} stated neighbour calculation.`);
+        for (let columnIndex = columnRange.start; columnIndex <= columnRange.end; columnIndex += 1 + offset) {
+            for (let rowIndex = rowRange.start; rowIndex <= rowRange.end; rowIndex++) {
                 const index = height * rowIndex + columnIndex;
                 if (Atomics.load(this.map!, index) === CellValue.notDefined) {
                     const neighboursCount = this.calculateNeighbours(columnIndex, rowIndex, width, height);
                     Atomics.store(this.map!, index, neighboursCount);
-                    // cb(neighboursCount);
+                    if (cb) {
+                        cb(columnIndex, rowIndex);
+                    }
                 }
             }
         }
@@ -222,7 +234,7 @@ export interface GenerateMapWorker {
 
     recursiveCalculateNeighbours(columnIndex: number, rowIndex: number, width: number, height: number, cb: (key: string) => void): void;
 
-    calculateNeighboursInRange(width: number, height: number, columnRange: { start: number, end: number }, rowRange: { start: number, end: number }, cb: (val: number) => void): void;
+    calculateNeighboursInRange(width: number, height: number, columnRange: { start: number, end: number }, rowRange: { start: number, end: number }, offset: number, cb?: (columnIndex: number, rowIndex: number) => Promise<void>): void;
 
     // lockedIndices?: SharedArrayBuffer;
     // setHeight(height: number): void;

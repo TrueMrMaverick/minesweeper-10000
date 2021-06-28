@@ -6,9 +6,8 @@ export class CellService {
     private readonly stateSubj: Subject<CellState>;
     private handlingClick: boolean = false;
 
-    constructor(private valueSubj: Subject<CellValue>, public columnIndex: number, public rowIndex: number, public index: number, private mapHandleClick: () => Promise<void>) {
+    constructor(private _value: CellValue, public columnIndex: number, public rowIndex: number, public index: number, private mapHandleClick: () => Promise<void>) {
         this.stateSubj = new Subject<CellState>(CellState.closed);
-
 
         this.handleClick = this.handleClick.bind(this);
     }
@@ -17,16 +16,21 @@ export class CellService {
         return this.stateSubj;
     }
 
-    get value$(): Observable<CellValue> {
-        return this.valueSubj;
-    }
-
-    get cashedValue(): CellValue {
-        return this.valueSubj.currentValue;
+    get value(): CellValue {
+        return this._value;
     }
 
     get currentState(): CellState {
         return this.stateSubj.currentValue;
+    }
+
+    updateAndOpen(value: CellValue) {
+        this._value = value;
+        this.open();
+    }
+
+    open() {
+        this.stateSubj.next(CellState.open);
     }
 
     handleClick() {
