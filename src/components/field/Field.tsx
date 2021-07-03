@@ -1,16 +1,20 @@
 import React, {useEffect, useState} from "react";
-import {MinesweeperMap} from "../../core/minesweeperMap";
+import {MinesweeperMap} from "../../core/map/minesweeperMap";
 import {Cell} from "../cell/Cell";
 import {AutoSizer, Grid} from "react-virtualized";
+import {useStoreState} from "../../core/store/store";
+import {AppStoreEntries} from "../../core/store/types/appStore";
+import {GameState} from "../../core/store/types/gameState";
 
-export const Field = React.memo(function Field() {
-    const [width, setWidth] = useState(100);
-    const [height, setHeight] = useState(100);
-    const [mineCount, setMineCount] = useState(50);
+export const Field = function Field() {
+    const [width] = useStoreState<number>(AppStoreEntries.width);
+    const [height] = useStoreState<number>(AppStoreEntries.height);
+    const [mineCount] = useStoreState<number>(AppStoreEntries.mineCount);
+    const [gameState] = useStoreState<GameState>(AppStoreEntries.gameState);
 
     const [map, setMap] = useState<MinesweeperMap | undefined>(undefined);
-    const [isMapLoading, setIsMapLoading] = useState(true);
 
+    const [isMapLoading, setIsMapLoading] = useState(true);
 
     useEffect(() => {
         const map = new MinesweeperMap(width, height, mineCount);
@@ -26,17 +30,14 @@ export const Field = React.memo(function Field() {
         };
     }, [])
 
-    if (!map || isMapLoading) {
+    if (!map || isMapLoading || gameState === GameState.Loading) {
         return <></>;
     }
 
     return (
         <>
-            <div style={{width: '100%', height: '75px', backgroundColor: 'black'}}>
-                Header
-            </div>
             <div>
-                <AutoSizer style={{width: '100%', height: 'calc(100vh - 40px)'}}>
+                <AutoSizer style={{width: '100%', height: 'calc(100vh - 75px)'}}>
                     {
                         ({width: gridWidth, height: gridHeight}) => (
                             <Grid rowCount={height}
@@ -45,18 +46,16 @@ export const Field = React.memo(function Field() {
                                   height={gridHeight}
                                   width={gridWidth}
                                   columnWidth={25}
-                                  onSectionRendered={({columnStartIndex, columnStopIndex, rowStartIndex, rowStopIndex}) => {
-                                      // map?.calculateNeighboursInRange(
-                                      //     {start: columnStartIndex, end: columnStopIndex},
-                                      //     {start: rowStartIndex, end: rowStopIndex}
-                                      // )
-                                  }}
                                   cellRenderer={({columnIndex, rowIndex, key, style}) => {
 
-                                      const cell = map?.getCell(columnIndex, rowIndex);
+                                      const cell = map!.getCell(columnIndex, rowIndex);
 
                                       return (
-                                          <Cell style={style} key={key} cellService={cell}/>)
+                                          <Cell style={style} key={key}
+                                                onClick={cell.onClick}
+                                                onContextMenu={cell.onContextMenu}
+                                                notifier={cell.notifier}
+                                          />)
                                   }}
                             />)
                     }
@@ -64,4 +63,4 @@ export const Field = React.memo(function Field() {
             </div>
         </>
     );
-});
+};

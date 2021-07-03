@@ -1,17 +1,10 @@
-class StackNode<T> {
-    constructor(public value: T, public next: StackNode<T> | null = null) {
-    }
-}
+import {CollectionNode} from "./collectionNode";
 
 export class Stack<T> {
-    private head: StackNode<T> | null = null;
+    private head: CollectionNode<T> | null = null;
     private _size: number = 0;
     get size() {
         return this._size;
-    }
-
-
-    constructor() {
     }
 
     isEmpty() {
@@ -27,7 +20,7 @@ export class Stack<T> {
     }
 
     push(value: T): void {
-        this.head = new StackNode(value, this.head);
+        this.head = new CollectionNode(value, this.head);
         this._size++;
     }
 

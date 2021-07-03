@@ -1,18 +1,5 @@
 import {expose} from "comlink";
-
-enum CellValue {
-    notDefined = -1,
-    empty = 0,
-    one,
-    two,
-    three,
-    four,
-    five,
-    six,
-    seven,
-    eight,
-    mine ,
-}
+import {CellValue} from "../map/types/cell";
 
 const exports: GenerateMapWorker = {
     calculateNeighbours(columnIndex: number, rowIndex: number, width: number, height: number): number {
@@ -27,42 +14,69 @@ const exports: GenerateMapWorker = {
         const index = height * rowIndex + columnIndex;
         const column = columnIndex;
         const row = rowIndex;
-        // const width = this._width;
-        // const height = this._height;
+
+        // const checkedIndex = 2;
 
         if (column !== 0 && map[index - 1] === CellValue.mine) {
             counter++;
+            // if (index === checkedIndex) {
+            //     console.log('left')
+            // }
         }
 
         if (column !== width - 1 && map[index + 1] === CellValue.mine) {
             counter++;
+            // if (index === checkedIndex) {
+            //     console.log('right')
+            // }
         }
 
         if (row !== 0 && map[index - width] === CellValue.mine) {
             counter++;
+            // if (index === checkedIndex) {
+            //     console.log('top')
+            // }
         }
 
         if (row !== height && map[index + width] === CellValue.mine) {
             counter++;
+            // if (index === checkedIndex) {
+            //     console.log('bottom');
+            // }
         }
 
         if (column !== 0) {
             if (row !== 0 && map[index - width - 1] === CellValue.mine) {
                 counter++;
+                // if (index === checkedIndex) {
+                //     console.log('left-top')
+                // }
             }
 
             if (row !== height && map[index + width - 1] === CellValue.mine) {
                 counter++;
+
+                // if (index === checkedIndex) {
+                //     console.log('left-bottom')
+                // }
             }
         }
 
-        if (column !== width) {
+        if (column !== width - 1) {
             if (row !== 0 && map[index - width + 1] === CellValue.mine) {
                 counter++;
+
+                // if (index === checkedIndex) {
+                //     console.log('right-top')
+                // }
             }
 
             if (row !== height && map[index + width + 1] === CellValue.mine) {
                 counter++;
+
+                // if (index === checkedIndex) {
+                //     console.log('right-bottom')
+                // }
             }
         }
 
@@ -107,42 +121,6 @@ const exports: GenerateMapWorker = {
         this.recursiveCalculateNeighbours(columnIndex - 1, rowIndex + 1, width, height, cb);
         this.recursiveCalculateNeighbours(columnIndex + 1, rowIndex - 1, width, height, cb);
         this.recursiveCalculateNeighbours(columnIndex + 1, rowIndex + 1, width, height, cb);
-
-        // if (columnIndex !== 0) {
-        // }
-        //
-        // if (columnIndex !== width - 1) {
-        // }
-        //
-        // if (rowIndex !== 0) {
-        // }
-        //
-        // if (rowIndex !== height - 1) {
-        // }
-        //
-        // if (columnIndex !== 0) {
-        //     if (rowIndex !== 0) {
-        //     }
-        //
-        //     if (rowIndex !== height - 1) {
-        //     }
-        // }
-        //
-        // if (columnIndex !== 0) {
-        //     if (rowIndex !== 0) {
-        //     }
-        //
-        //     if (rowIndex !== height - 1) {
-        //     }
-        // }
-        //
-        // if (columnIndex !== width - 1) {
-        //     if (rowIndex !== 0) {
-        //     }
-        //
-        //     if (rowIndex !== height - 1) {
-        //     }
-        // }
     },
     generateMap(startingIndex: number, offset: number) {
         if (!this.map) {
@@ -160,17 +138,12 @@ const exports: GenerateMapWorker = {
             if (!emptyCellIndex && Atomics.load(map, i) !== CellValue.mine) {
                 emptyCellIndex = i;
             }
-            // const exchanged = map[i];
-            // map[i] = map[j];
-            // map[j] = exchanged;
         }
 
+        // eslint-disable-next-line no-restricted-globals
+        console.log(`Thread ${self.name} finished map generation`);
         return emptyCellIndex;
     },
-    // height: 0,
-    // setHeight(height: number) {
-    //     this.height = height;
-    // },
     map: undefined,
     setMap(sharedArray: SharedArrayBuffer) {
         this.map = new Int8Array(sharedArray);
@@ -198,34 +171,9 @@ const exports: GenerateMapWorker = {
             }
         }
     }
-
-    // lockedIndices: undefined,
-    // setLockedIndices(sharedArray: SharedArrayBuffer) {
-    //     this.lockedIndices = sharedArray;
-    // },
-    // shuffleRange(columnRange: {start: number, end: number}, rowRange: {start: number, end: number}) {
-    //     if (!this.sharedArray) {
-    //         throw new Error('Shared Array is undefined');
-    //     }
-    //
-    //     const map = new Int8Array(this.sharedArray);
-    //     for (let i = columnRange.start; i < columnRange.end; i++) {
-    //         for (let j = rowRange.start; j < rowRange.end; j++) {
-    //             const index = this.height * j + i;
-    //             const exchangeIndex = Math.floor(Math.random() * (map.length - index - 1) + index);
-    //             const exchanged = map[index];
-    //             if (exchanged !== -1) {
-    //                 continue;
-    //             }
-    //             map[index] = map[exchangeIndex];
-    //             map[exchangeIndex] = exchanged;
-    //         }
-    //     }
-    // }
 };
 
 export interface GenerateMapWorker {
-    // height: number;
     map?: Int8Array;
 
     setMap(sharedArray: SharedArrayBuffer): void;
@@ -236,10 +184,6 @@ export interface GenerateMapWorker {
 
     calculateNeighboursInRange(width: number, height: number, columnRange: { start: number, end: number }, rowRange: { start: number, end: number }, offset: number, cb?: (columnIndex: number, rowIndex: number) => Promise<void>): void;
 
-    // lockedIndices?: SharedArrayBuffer;
-    // setHeight(height: number): void;
-    // setLockedIndices(sharedArray: SharedArrayBuffer): void;
-    // shuffleRange(columnRange: {start: number, end: number}, rowRange: {start: number, end: number}): void;
     generateMap(startingIndex: number, offset: number): number | undefined
 }
 

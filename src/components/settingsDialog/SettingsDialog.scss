@@ -1,0 +1,17 @@
+.SettingsDialog {
+  &-root {
+
+  }
+  &-content {
+    display: flex;
+    flex-direction: column;
+    max-width: 300px;
+
+    &.MuiDialogContent-root {
+      padding: 20px 24px;
+    }
+  }
+  &-textField {
+    padding: 16px 0;
+  }
+}

@@ -1,0 +1,26 @@
+
+
+.Menu {
+  &-root {
+    background-color: lightgray;
+    border-radius: 0;
+    display: flex;
+    flex-wrap: nowrap;
+
+    width:100%;
+    height: 75px;
+  }
+  &-inGameUi {
+    height: inherit;
+    display: flex;
+    flex: 1;
+  }
+  &-optionsMenu {
+    height: inherit;
+    min-width: 20px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

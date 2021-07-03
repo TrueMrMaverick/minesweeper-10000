@@ -1,0 +1,13 @@
+.Cell {
+  &-root {
+    border-radius: 0;
+    padding: 0;
+    min-width: unset;
+
+    color: black;
+
+    border: 1px solid black;
+    cursor: pointer;
+    user-select: none;
+  }
+}

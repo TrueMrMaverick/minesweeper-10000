@@ -1,0 +1,33 @@
+.GameUI {
+  &-root {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &-numberBoxContainer {
+    flex: 1;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  &-numberBox {
+    width: 70px;
+    min-width: 70px;
+
+    height: 40px;
+    padding: 5px;
+
+    font-size: 40px;
+    line-height: 35px;
+
+    background-color: red;
+
+
+    text-align: center;
+  }
+  &-face {
+    cursor: pointer;
+  }
+}
