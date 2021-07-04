@@ -11,7 +11,6 @@ const Face = React.memo<{ gameState: GameState, onClick: () => void, className: 
     let Component;
 
     switch (gameState) {
-        case GameState.Pending:
         case GameState.InGame:
             Component = Happy;
             break;
@@ -40,7 +39,7 @@ export const GameUI = React.memo<GameUIProps>(function GameUI({className}) {
         <div className={`GameUI-root ${className ?? ''}`}>
             <div className="GameUI-numberBoxContainer">
                 {
-                    gameState !== GameState.Pending &&
+                    gameState !== GameState.Loading &&
                     <div className="GameUI-numberBox">
                         {mineCounter}
                     </div>
@@ -50,12 +49,11 @@ export const GameUI = React.memo<GameUIProps>(function GameUI({className}) {
                 if (gameState === GameState.Loading) {
                     return;
                 }
-                setGameState(GameState.Pending);
                 setGameState(GameState.Loading);
             }}/>
             <div className="GameUI-numberBoxContainer">
                 {
-                    gameState !== GameState.Pending &&
+                    gameState !== GameState.Loading &&
                     <div className="GameUI-numberBox">
                         {timer}
                     </div>

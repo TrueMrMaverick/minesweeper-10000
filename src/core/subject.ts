@@ -28,7 +28,7 @@ export class Subject<T> implements Observable<T> {
         this.subscribers.set(index, next);
 
         if (!skipFirst) {
-            next(this._value);
+            queueMicrotask(() => next(this._value));
         }
 
         return {

@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {MinesweeperMap} from "../../core/map/minesweeperMap";
 import {Cell} from "../cell/Cell";
 import {AutoSizer, Grid} from "react-virtualized";
@@ -8,86 +8,70 @@ import {MapOptions} from "../../core/store/types/mapOptions";
 import {Subject, Subscription} from "../../core/subject";
 import {GameState} from "../../core/store/types/gameState";
 
-export const Field = React.memo(function Field() {
+export const Field = /*React.memo(*/function Field() {
     const [mapOptions, setMapOptions] = useState<MapOptions | undefined>();
     const [map, setMap] = useState<MinesweeperMap | undefined>(undefined);
-    const [isMapLoading, setIsMapLoading] = useState(true);
+    const [gameState, setGameState] = useState(appStore.getValue(AppStoreEntries.gameState) as GameState);
 
     useEffect(() => {
-        let mapLoadingSub: Subscription | undefined;
-        let newMap: MinesweeperMap | undefined;
-        const sub = (appStore.getSubject(AppStoreEntries.mapOptions) as Subject<MapOptions>).subscribe(newOptions => {
-
-            const {width, height, mineCount} = newOptions;
-            newMap?.destroy();
-            newMap = new MinesweeperMap(width, height, mineCount);
-            setMap(newMap)
-            mapLoadingSub = newMap.loading$.subscribe((val) => {
-                setIsMapLoading(val);
-                setMapOptions(newOptions);
-                console.log('Map loading status update: ', val)
-            });
-            newMap.generate();
+        const gameStateSub = (appStore.getSubject(AppStoreEntries.gameState) as Subject<GameState>).subscribe(newGameState => {
+            setGameState(newGameState);
         })
 
         return () => {
-            sub.unsubscribe();
-            mapLoadingSub?.unsubscribe();
-            newMap?.destroy();
+            gameStateSub.unsubscribe();
         }
     }, []);
 
-    const [gameState, setGameState] = useState(appStore.getValue(AppStoreEntries.gameState) as GameState);
-    const gridRef = useRef<Grid>();
     useEffect(() => {
-        const sub = (appStore.getSubject(AppStoreEntries.gameState) as Subject<GameState>)
-            .subscribe(newGameState => {
-                console.log('New game state: ', newGameState);
-                if (!gridRef.current || gameState === newGameState) {
-                    return;
-                }
+        let newMap: MinesweeperMap | undefined;
 
-                // if (newGameState === GameState.Refreshing || newGameState === GameState.InGame || newGameState === GameState.Won || newGameState === GameState.Lost) {
-                //     gridRef.current.forceUpdate();
-                // }
+        if (gameState === GameState.Loading) {
+            map?.destroy();
+            setMap(undefined);
+            const sub = (appStore.getSubject(AppStoreEntries.mapOptions) as Subject<MapOptions>).subscribe(newOptions => {
+                sub.unsubscribe();
 
-                setGameState(newGameState);
-            });
+                const {width, height, mineCount} = newOptions;
+                map?.destroy();
+                newMap = new MinesweeperMap(width, height, mineCount);
+                setMap(newMap)
+                setMapOptions(newOptions);
+                newMap.generate();
+            })
+        }
+    }, [gameState])
 
-        return () => sub.unsubscribe();
-    }, [])
-
-    if (!map || isMapLoading || !mapOptions) {
+    if (!map  || !mapOptions || gameState === GameState.Loading) {
         return <></>;
     }
 
-    console.log('Grid rendered');
+    // console.log('Grid rendered');
     const {width, height} = mapOptions;
-
+    // console.log('Game state: ', gameState);
     return (
         <>
             <div>
                 <AutoSizer style={{width: '100%', height: 'calc(100vh - 75px)'}}>
                     {
                         ({width: gridWidth, height: gridHeight}) => (<>
-                            {/* @ts-ignore */}
-                            <Grid ref={gridRef}
-                                  rowCount={height}
-                                  columnCount={width}
-                                  rowHeight={25}
-                                  height={gridHeight}
-                                  width={gridWidth}
-                                  columnWidth={25}
-                                  cellRenderer={({columnIndex, rowIndex, key, style}) => {
-                                      return (
-                                          <Cell style={style}
-                                                key={key}
-                                                gameState={gameState}
-                                                map={map!}
-                                                columnIndex={columnIndex}
-                                                rowIndex={rowIndex}
-                                          />)
-                                  }}
+                            <Grid
+                                rowCount={height}
+                                columnCount={width}
+                                rowHeight={25}
+                                height={gridHeight}
+                                width={gridWidth}
+                                columnWidth={25}
+                                cellRenderer={({columnIndex, rowIndex, key, style}) => {
+                                    return (
+                                        <Cell style={style}
+                                              key={key}
+                                              gameState={gameState}
+                                              map={map!}
+                                              columnIndex={columnIndex}
+                                              rowIndex={rowIndex}
+                                        />)
+                                }}
                             />
                         </>)
                     }
@@ -95,4 +79,4 @@ export const Field = React.memo(function Field() {
             </div>
         </>
     );
-});
+}/*)*/;

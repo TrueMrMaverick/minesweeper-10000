@@ -28,7 +28,6 @@ export class MinesweeperMap {
     private readonly cellsLeftToOpen: Subject<number>;
     private firstClick: boolean = true;
     private emptyCellIndex?: number;
-    private loadingSubj = new Subject(true);
 
     private destroyed = false;
 
@@ -77,10 +76,6 @@ export class MinesweeperMap {
         }
     }
 
-    get loading$(): Observable<boolean> {
-        return this.loadingSubj;
-    }
-
     destroy() {
         if (this.destroyed) {
             return;
@@ -90,13 +85,11 @@ export class MinesweeperMap {
         this.generatorsWorkers.forEach(worker => worker.terminate());
         this.timer.clear();
         this.mineCountSubj.next(0);
-        this.loadingSubj.complete();
 
         this.destroyed = true;
     }
 
     async generate() {
-        this.loadingSubj.next(true);
         const t0 = performance.now();
         let arr = await Promise.all(this.generators.map((generator, index) => generator.generateMap(index, this.threadsNumber)));
         // this._map.fill(CellValue.notDefined);
@@ -111,7 +104,6 @@ export class MinesweeperMap {
         this.timer.start();
         this.mineCountSubj.next(this._totalMineCount);
         this.gameState.next(GameState.InGame);
-        this.loadingSubj.next(false);
     }
 
     getCellClickHandler(columnIndex: number, rowIndex: number): () => MapCellValue | undefined {
@@ -122,7 +114,7 @@ export class MinesweeperMap {
 
             let cellValue = this.getCellValueXY(columnIndex, rowIndex);
 
-            if (isCellValueOpen(cellValue) || isCellValueFlag(cellValue)) {
+            if (cellValue === undefined || isCellValueOpen(cellValue) || isCellValueFlag(cellValue)) {
                 return;
             }
 
@@ -133,7 +125,7 @@ export class MinesweeperMap {
 
                 this.setCellValueXY(columnIndex, rowIndex, this.calculateNeighbours(columnIndex, rowIndex));
 
-                cellValue = this.getCellValueXY(columnIndex, rowIndex);
+                cellValue = this.getCellValueXY(columnIndex, rowIndex)!;
 
                 [
                     this.getIndex(columnIndex - 1, rowIndex - 1),
@@ -219,7 +211,7 @@ export class MinesweeperMap {
             }
 
             const cellValue = this.getCellValueXY(columnIndex, rowIndex);
-            if (isCellValueOpen(cellValue)) {
+            if (cellValue === undefined || isCellValueOpen(cellValue)) {
                 return;
             }
 
@@ -256,6 +248,10 @@ export class MinesweeperMap {
     }
 
     getCellValueXY(columnIndex: number, rowIndex: number) {
+        if (columnIndex === undefined || rowIndex === undefined) {
+            return undefined;
+        }
+
         return this.getCellValue(this._height * rowIndex + columnIndex);
     }
 

@@ -91,7 +91,7 @@ export const SettingsDialog = React.memo<SettingsDialogProps>(function SettingsD
 
         if (value < 1) {
             errors.push('There should be at least 1 mine :)');
-        } else if (value >= size) {
+        } else if (value >= (size - 1)) {
             errors.push('Number of mines should be lesser then total size minus 1');
         }
 
@@ -113,13 +113,11 @@ export const SettingsDialog = React.memo<SettingsDialogProps>(function SettingsD
         };
 
         LocalStorage.setMapOptions(newMapOptions);
-        setMapOptions(newMapOptions);
 
         setOpen(false);
-        if (gameState !== GameState.Pending) {
-            setGameState(GameState.Pending);
-        }
+
         setGameState(GameState.Loading);
+        setMapOptions(newMapOptions);
     }
 
 
