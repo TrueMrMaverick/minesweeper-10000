@@ -1,6 +1,7 @@
 import {expose} from "comlink";
 import {CellValue} from "../map/types/cell";
 import {calculateNeighbours} from "../utils/calculateNeighbours";
+import {Queue} from "../utils/queue";
 
 const exports: GenerateMapWorker = {
     calculateNeighbours(columnIndex: number, rowIndex: number, width: number, height: number): number {
@@ -97,6 +98,79 @@ const exports: GenerateMapWorker = {
                 }
             }
         }
+    },
+    chainOpen(width: number, height: number, columnIndex: number, rowIndex: number): number {
+        if (!this.map) {
+            throw new Error('Map is undefined');
+        }
+
+        // eslint-disable-next-line no-restricted-globals
+        console.log(`Thread ${self.name} stated chainOpen calculation.`);
+        const chainOpenQueue = new Queue<number>();
+
+        function getIndex(columnIndex: number, rowIndex: number) {
+            if (columnIndex < 0 || columnIndex >= width) {
+                return undefined;
+            }
+            if (rowIndex < 0 || rowIndex >= height) {
+                return undefined;
+            }
+
+            return height * rowIndex + columnIndex;
+        }
+
+        chainOpenQueue.enqueue(getIndex(columnIndex, rowIndex)!);
+
+        let openedCellsCounter = 0;
+
+        while (!chainOpenQueue.isEmpty()) {
+            const index = chainOpenQueue.dequeue();
+
+            if (index === null) {
+                break;
+            }
+
+            const columnIndex = index % width;
+            const rowIndex = (index - columnIndex) / width;
+
+            let cellValue;
+            try {
+                cellValue = Atomics.load(this.map, index);
+            } catch (e) {
+                continue;
+            }
+            if (cellValue >= 10) {
+                continue;
+            }
+
+            Atomics.store(this.map, index, cellValue + 10);
+            openedCellsCounter++;
+
+            if (cellValue !== CellValue.empty) {
+                continue;
+            }
+
+            [
+                getIndex(columnIndex - 1, rowIndex - 1),
+                getIndex(columnIndex - 1, rowIndex + 1),
+                getIndex(columnIndex + 1, rowIndex - 1),
+                getIndex(columnIndex + 1, rowIndex + 1),
+                getIndex(columnIndex, rowIndex - 1),
+                getIndex(columnIndex, rowIndex + 1),
+                getIndex(columnIndex + 1, rowIndex),
+                getIndex(columnIndex - 1, rowIndex),
+            ]
+                .forEach((neighbour) => {
+                    if (neighbour !== undefined && Atomics.load(this.map!, neighbour) < 10) {
+                        chainOpenQueue.enqueue(neighbour);
+                    }
+                })
+        }
+
+        // eslint-disable-next-line no-restricted-globals
+        console.log(`Thread ${self.name} finished chainOpen calculation and opened: ${openedCellsCounter}`);
+
+        return openedCellsCounter;
     }
 };
 
@@ -111,7 +185,9 @@ export interface GenerateMapWorker {
 
     calculateNeighboursInRange(width: number, height: number, columnRange: { start: number, end: number }, rowRange: { start: number, end: number }, offset: number, cb?: (columnIndex: number, rowIndex: number) => Promise<void>): void;
 
-    generateMap(startingIndex: number, offset: number): number | undefined
+    generateMap(startingIndex: number, offset: number): number | undefined;
+
+    chainOpen(width: number, height: number, columnIndex: number, rowIndex: number): number;
 }
 
 expose(exports);

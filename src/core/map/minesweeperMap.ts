@@ -164,9 +164,11 @@ export class MinesweeperMap {
             // Handle chain open id click was performed on empty cell
             this.gameState.next(GameState.Refreshing);
             const t0 = performance.now();
-            this.chainOpen({columnIndex, rowIndex});
-            console.log(`Chain open performed in ${performance.now() - t0}.`);
-            this.gameState.next(GameState.InGame);
+            this.chainOpen({columnIndex, rowIndex}).then((openedCells) => {
+                this.cellsLeftToOpen.next(this.cellsLeftToOpen.value - openedCells);
+                console.log(`Chain open performed in ${performance.now() - t0}.`);
+                this.gameState.next(GameState.InGame);
+            });
         }
     }
 
@@ -339,43 +341,37 @@ export class MinesweeperMap {
      * @param initiator
      * @private
      */
-    private chainOpen(initiator: { columnIndex: number, rowIndex: number }) {
-        this.chainOpenQueue.enqueue(this._height * initiator.rowIndex + initiator.columnIndex);
+    private async chainOpen(initiator: { columnIndex: number, rowIndex: number }): Promise<number> {
+        const index = this.getIndex(initiator.columnIndex, initiator.rowIndex)!;
 
-        while (!this.chainOpenQueue.isEmpty()) {
-            const index = this.chainOpenQueue.dequeue();
+        const columnIndex = index % this._width;
+        const rowIndex = (index - columnIndex) / this._width;
 
-            if (index === null) {
-                break;
-            }
-
-            const columnIndex = index % this._width;
-            const rowIndex = (index - columnIndex) / this._width;
-
-            let cellValue;
-            try {
-                cellValue = this.getCellValue(index);
-            } catch (e) {
-                continue;
-            }
-            if (cellValue >= 10) {
-                continue;
-            }
-
-            this.setCellValue(index, cellValue + 10);
-            this.cellsLeftToOpen.next(this.cellsLeftToOpen.value - 1);
-
-            if (cellValue !== CellValue.empty) {
-                continue;
-            }
-
-            this.getCellNeighbours(columnIndex, rowIndex)
-                .forEach((neighbour) => {
-                    if (neighbour !== undefined && this.getCellValue(neighbour) < 10) {
-                        this.chainOpenQueue.enqueue(neighbour);
-                    }
-                })
+        let cellValue;
+        try {
+            cellValue = this.getCellValue(index);
+        } catch (e) {
+            return 1;
         }
+        if (cellValue >= 10) {
+            return 1;
+        }
+
+        this.setCellValue(index, cellValue + 10);
+
+        if (cellValue !== CellValue.empty) {
+            return 0;
+        }
+
+        const neighbours = this.getCellNeighbours(columnIndex, rowIndex).filter(neighbour => neighbour !== undefined) as Array<number>;
+
+        return (await Promise.all(neighbours.map((neighbour, neighbourIndex) => {
+            const generatorIndex = neighbourIndex % this.threadsNumber;
+            const columnIndex = neighbour % this._width;
+            const rowIndex = (neighbour - columnIndex) / this._width;
+
+            return this.generators[generatorIndex].chainOpen(this._width, this._height, columnIndex, rowIndex)
+        }))).reduce((acc, val) => acc + val) + 1;
     }
 
     /**
