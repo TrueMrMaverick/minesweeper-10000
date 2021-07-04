@@ -1,5 +1,3 @@
-import {Queue} from "./queue";
-
 export class SharedQueue {
 
     private readonly indexArray: Int32Array;

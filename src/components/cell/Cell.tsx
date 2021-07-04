@@ -12,7 +12,7 @@ enum CellColor {
 
 function getCellValue(value: CellValue | CellValueOpen | undefined): CellValue | undefined {
     if (!value || isCellValue(value)) {
-        return value;
+        return;
     }
 
     if (value === CellValueOpen.mine || value === CellValueOpen.empty) {
@@ -61,8 +61,6 @@ export class Cell extends Component<CellProps, { value?: MapCellValue }> {
     }
 
     shouldComponentUpdate(nextProps: Readonly<CellProps>, nextState: Readonly<{ value: MapCellValue }>, nextContext: any): boolean {
-        // const {gameState, columnIndex, rowIndex} = this.props;
-        // console.log(`Cell_${columnIndex}_${rowIndex} game state is ${gameState} next state is ${nextProps.gameState}.`);
         if (nextProps.gameState === GameState.InGame) {
            return  nextState.value !== this.state.value;
         }
@@ -90,14 +88,11 @@ export class Cell extends Component<CellProps, { value?: MapCellValue }> {
     render() {
         const {
             style,
-            columnIndex,
-            rowIndex,
             gameState
         } = this.props;
 
         const {value} = this.state;
 
-            // console.log(`Cell_${columnIndex}_${rowIndex} rendered.`);
         if (value === undefined) {
             return <div style={{...style, backgroundColor: "white"}}/>
         }
@@ -132,63 +127,6 @@ export class Cell extends Component<CellProps, { value?: MapCellValue }> {
         )
     }
 }
-
-// export const Cell = React.memo(function Cell({
-//                                                  style,
-//                                                  map,
-//                                                  columnIndex,
-//                                                  rowIndex,
-//                                                  gameState
-//                                              }: CellProps) {
-//     const [value, setValue] = useState<MapCellValue>(() => map.getCellValueXY(columnIndex, rowIndex));
-//     const onClick = useMemo(() => map.getCellClickHandler(columnIndex, rowIndex), [map, columnIndex, rowIndex]);
-//     const onContextMenu = useMemo(() => map.getCellContextMenuHandler(columnIndex, rowIndex), [columnIndex, map, rowIndex]);
-//
-//     useEffect(() => {
-//         if (gameState === GameState.Refreshing || gameState === GameState.Loading || gameState === GameState.Pending) {
-//             return;
-//         }
-//
-//         const newValue = map.getCellValueXY(columnIndex, rowIndex);
-//         if (value !== newValue) {
-//             setValue(newValue);
-//         }
-//     }, [gameState]);
-//
-//     // console.log(`Cell_${columnIndex}_${rowIndex} rendered.`)
-//
-//     if (value === undefined) {
-//         return <div style={{...style, backgroundColor: "white"}}/>
-//     }
-//
-//     return (
-//         <div className={`Cell-root`}
-//              style={{
-//                  ...style,
-//                  backgroundColor: getCellColor(value, gameState)
-//              }}
-//              onClick={(e) => {
-//                  const newValue = onClick();
-//                  if (newValue !== undefined && newValue !== value) {
-//                      setValue(newValue);
-//                  }
-//              }}
-//              onContextMenu={(e) => {
-//                  e.preventDefault();
-//
-//                  const newValue = onContextMenu();
-//                  if (newValue !== undefined && newValue !== value) {
-//                      setValue(newValue);
-//                  }
-//              }}>
-//             {
-//                 value && (isCellValueFlag(value) || (gameState === GameState.Won && isMine(value)))
-//                     ? <GolfCourse/>
-//                     : getCellValue(value)
-//             }
-//         </div>
-//     )
-// });
 
 interface CellProps {
     gameState: GameState;

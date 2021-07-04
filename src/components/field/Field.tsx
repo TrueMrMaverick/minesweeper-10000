@@ -5,7 +5,7 @@ import {AutoSizer, Grid} from "react-virtualized";
 import {appStore} from "../../core/store/store";
 import {AppStoreEntries} from "../../core/store/types/appStore";
 import {MapOptions} from "../../core/store/types/mapOptions";
-import {Subject, Subscription} from "../../core/subject";
+import {Subject} from "../../core/subject";
 import {GameState} from "../../core/store/types/gameState";
 
 export const Field = /*React.memo(*/function Field() {
@@ -46,9 +46,7 @@ export const Field = /*React.memo(*/function Field() {
         return <></>;
     }
 
-    // console.log('Grid rendered');
     const {width, height} = mapOptions;
-    // console.log('Game state: ', gameState);
     return (
         <>
             <div>

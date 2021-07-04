@@ -58,7 +58,6 @@ const exports: GenerateMapWorker = {
         console.log(`Thread ${self.name} stated map generation`);
         let emptyCellIndex: number | undefined;
         const map = this.map;
-        // const lockedIndices = new Int32Array(this.lockedIndices);
         for (let i = startingIndex; i < map.length - 2; i += offset) {
             const j = Math.floor(Math.random() * (map.length - i - 1) + i);
             Atomics.store(map, i, Atomics.exchange(map, j, Atomics.load(map, i)));

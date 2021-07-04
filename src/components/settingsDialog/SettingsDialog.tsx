@@ -91,7 +91,7 @@ export const SettingsDialog = React.memo<SettingsDialogProps>(function SettingsD
 
         if (value < 1) {
             errors.push('There should be at least 1 mine :)');
-        } else if (value >= (size - 1)) {
+        } else if (value >= size) {
             errors.push('Number of mines should be lesser then total size minus 1');
         }
 

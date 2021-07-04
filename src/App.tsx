@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React from 'react';
 import './App.scss';
 import {Field} from "./components/field/Field";
 import {GameMenu} from "./components/gameMenu/GameMenu";
@@ -8,7 +8,6 @@ import {AppStoreEntries} from "./core/store/types/appStore";
 import {GameState} from "./core/store/types/gameState";
 import {LocalStorage} from "./core/utils/localStorage";
 import {defaultMapOptions} from "./core/store/types/mapOptions";
-import {Subject} from "./core/subject";
 
 
 appStore
