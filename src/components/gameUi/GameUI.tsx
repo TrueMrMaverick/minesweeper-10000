@@ -16,6 +16,7 @@ const Face = React.memo<{ gameState: GameState, onClick: () => void, className: 
             Component = Happy;
             break;
         case GameState.Loading:
+        case GameState.Refreshing:
             Component = Surprised;
             break;
         case GameState.Lost:

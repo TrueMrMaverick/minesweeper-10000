@@ -1,7 +1,8 @@
 export enum GameState {
-    InGame,
-    Lost,
-    Won,
-    Pending,
-    Loading
+    InGame = 'InGame',
+    Lost = 'Lost',
+    Won = 'Won',
+    Pending = 'Pending',
+    Loading = 'Loading',
+    Refreshing = 'Refreshing'
 }

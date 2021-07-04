@@ -28,7 +28,7 @@ class Store {
         return this.reactiveState.get(key)! as Subject<T>;
     }
 
-    getValue<T>(key: string): T {
+    getValue<T>(key: StoreKey): T {
         return this.getSubject<T>(key).value;
     }
 }

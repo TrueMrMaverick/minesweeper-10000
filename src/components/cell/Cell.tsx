@@ -1,18 +1,8 @@
-import React, {CSSProperties} from "react";
-import {
-    CellValue,
-    CellValueFlag,
-    CellValueOpen,
-    isCellValue,
-    isCellValueFlag,
-    isMine,
-    MapCellValue
-} from "../../core/map/types/cell";
-import {Subject, useSubject} from "../../core/subject";
+import React, {CSSProperties, useEffect, useMemo, useState} from "react";
+import {CellValue, CellValueOpen, isCellValue, isCellValueFlag, isMine, MapCellValue} from "../../core/map/types/cell";
 import {GolfCourse} from "@material-ui/icons";
-import {useStoreState} from "../../core/store/store";
-import {AppStoreEntries} from "../../core/store/types/appStore";
 import {GameState} from "../../core/store/types/gameState";
+import {MinesweeperMap} from "../../core/map/minesweeperMap";
 
 enum CellColor {
     closed = 'gray',
@@ -32,7 +22,15 @@ function getCellValue(value: CellValue | CellValueOpen | undefined): CellValue |
     return value - 10;
 }
 
-function getCellColor(value: MapCellValue): CellColor {
+function getCellColor(value: MapCellValue | undefined, gameState: GameState): CellColor {
+    if (value === undefined) {
+        return CellColor.openEmpty;
+    }
+
+    if (gameState === GameState.Lost && isMine(value)) {
+        return CellColor.openMine;
+    }
+
     if (isCellValue(value) || isCellValueFlag(value)) {
         return CellColor.closed;
     }
@@ -44,38 +42,68 @@ function getCellColor(value: MapCellValue): CellColor {
     return CellColor.openEmpty;
 }
 
-export const Cell = function Cell({style, onClick, notifier, onContextMenu}: CellProps) {
-    const [value] = useSubject(notifier);
-    const [gameState] = useStoreState<GameState>(AppStoreEntries.gameState);
+export const Cell = React.memo(function Cell({
+                                                 style,
+                                                 map,
+                                                 columnIndex,
+                                                 rowIndex,
+                                                 gameState
+                                             }: CellProps) {
+    const [value, setValue] = useState<MapCellValue>(() => map.getCellValueXY(columnIndex, rowIndex));
+    const onClick = useMemo(() => map.getCellClickHandler(columnIndex, rowIndex), [map, columnIndex, rowIndex]);
+    const onContextMenu = useMemo(() => map.getCellContextMenuHandler(columnIndex, rowIndex), [columnIndex, map, rowIndex]);
+
+    useEffect(() => {
+        if (gameState === GameState.Refreshing || gameState === GameState.Loading || gameState === GameState.Pending) {
+            return;
+        }
+
+        const newValue = map.getCellValueXY(columnIndex, rowIndex);
+        if (value !== newValue) {
+            setValue(newValue);
+        }
+    }, [gameState]);
+
+    console.log(`Cell_${columnIndex}_${rowIndex} rendered.`)
+
+    if (value === undefined) {
+        return <div style={{...style, backgroundColor: "white"}}/>
+    }
 
     return (
         <div className={`Cell-root`}
              style={{
                  ...style,
-                 backgroundColor: getCellColor(value),
-                 border: '1px solid black',
-                 textAlign: 'center'
+                 backgroundColor: getCellColor(value, gameState)
              }}
-             onClick={onClick}
+             onClick={(e) => {
+                 const newValue = onClick();
+                 if (newValue !== undefined && newValue !== value) {
+                     setValue(newValue);
+                 }
+             }}
              onContextMenu={(e) => {
                  e.preventDefault();
 
-                 onContextMenu()
+                 const newValue = onContextMenu();
+                 if (newValue !== undefined && newValue !== value) {
+                     setValue(newValue);
+                 }
              }}>
             {
-                isCellValueFlag(value) || (gameState === GameState.Won && isMine(value))
+                value && (isCellValueFlag(value) || (gameState === GameState.Won && isMine(value)))
                     ? <GolfCourse/>
                     : getCellValue(value)
             }
         </div>
     )
-};
+});
 
 interface CellProps {
-    value?: CellValue | CellValueOpen;
-    notifier: Subject<CellValue | CellValueOpen>;
-    onClick: () => void;
-    onContextMenu: () => void;
+    gameState: GameState;
     style: CSSProperties;
+    map: MinesweeperMap;
+    columnIndex: number;
+    rowIndex: number;
 }
 

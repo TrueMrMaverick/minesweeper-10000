@@ -14,7 +14,8 @@ export class Subject<T> implements Observable<T> {
     next(value: T): void {
         this._value = value;
         // this.subscribers.forEach((notifier) => notifier(this._value))
-        queueMicrotask(() => this.subscribers.forEach((notifier) => notifier(value)));
+        this.subscribers.forEach((notifier) => queueMicrotask(() => notifier(value)))
+
     }
 
     complete() {

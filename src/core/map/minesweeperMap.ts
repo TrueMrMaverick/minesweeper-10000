@@ -3,44 +3,34 @@ import {Observable, Subject} from "../subject";
 import {appStore} from "../store/store";
 import {GenerateMapWorker} from "../workers/mapGenerator";
 import {CellValue, isCellValueFlag, isCellValueOpen, isMine, MapCellValue} from "./types/cell";
-import {CellService} from "../cellService";
 import {AppStoreEntries} from "../store/types/appStore";
 import {Queue} from "../utils/queue";
 import {Timer} from "../utils/timer";
 import {GameState} from "../store/types/gameState";
+import {calculateNeighbours} from "../utils/calculateNeighbours";
+
 
 export class MinesweeperMap {
+    public readonly size: number;
     private readonly _arrayBuffer: SharedArrayBuffer;
-    private readonly _chunkedArray: Int8Array;
 
-    private readonly cashedCells = new Map<string, CellService>();
-
+    private readonly _map: Int8Array;
     private readonly _width: number;
     private readonly _height: number;
-
     private readonly _totalMineCount: number;
-
     private readonly allocatedBytes: number;
-
     private readonly generators = new Array<Remote<GenerateMapWorker>>();
     private readonly generatorsWorkers = new Array<Worker>();
-
     private readonly timer: Timer = new Timer(appStore.getSubject(AppStoreEntries.timer));
-
     private readonly chainOpenQueue = new Queue<number>();
-
     private readonly mineCountSubj = appStore.getSubject<number>(AppStoreEntries.mineCounter);
-
     private readonly gameState = appStore.getSubject<GameState>(AppStoreEntries.gameState);
-
     private readonly cellsLeftToOpen: Subject<number>;
-
     private firstClick: boolean = true;
     private emptyCellIndex?: number;
-
     private loadingSubj = new Subject(true);
 
-    public readonly size: number;
+    private destroyed = false;
 
     constructor(width: number, height: number, totalMineCount: number, private threadsNumber = 4) {
         this._width = width;
@@ -63,7 +53,7 @@ export class MinesweeperMap {
             if (val !== 0) {
                 return;
             }
-             this.gameState.next(GameState.Won);
+            this.gameState.next(GameState.Won);
             this.mineCountSubj.next(0);
             this.timer.stop()
         });
@@ -72,9 +62,9 @@ export class MinesweeperMap {
         this._arrayBuffer = new SharedArrayBuffer(this.allocatedBytes);
 
         // Preparing access point to the map data
-        this._chunkedArray = new Int8Array(this._arrayBuffer);
+        this._map = new Int8Array(this._arrayBuffer);
 
-        this._chunkedArray
+        this._map
             .fill(CellValue.mine, 0, totalMineCount)
             .fill(CellValue.notDefined, totalMineCount);
 
@@ -92,19 +82,25 @@ export class MinesweeperMap {
     }
 
     destroy() {
+        if (this.destroyed) {
+            return;
+        }
+
         this.generators.forEach(generator => generator[releaseProxy]());
         this.generatorsWorkers.forEach(worker => worker.terminate());
         this.timer.clear();
         this.mineCountSubj.next(0);
         this.loadingSubj.complete();
+
+        this.destroyed = true;
     }
 
     async generate() {
         this.loadingSubj.next(true);
         const t0 = performance.now();
         let arr = await Promise.all(this.generators.map((generator, index) => generator.generateMap(index, this.threadsNumber)));
-        // this._chunkedArray.fill(CellValue.notDefined);
-        // this._chunkedArray[8] = CellValue.mine;
+        // this._map.fill(CellValue.notDefined);
+        // this._map[8] = CellValue.mine;
         await this.calculateNeighboursInRange({start: 0, end: this._width - 1}, {start: 0, end: this._height - 1});
         const t1 = performance.now();
         console.log(`Map generated in ${t1 - t0} milliseconds.`);
@@ -118,25 +114,7 @@ export class MinesweeperMap {
         this.loadingSubj.next(false);
     }
 
-    getCell(columnIndex: number, rowIndex: number) {
-        let service = this.cashedCells.get(`${columnIndex}_${rowIndex}`);
-        if (service) {
-            return service;
-        }
-
-        const notifier = new Subject(this.getCellValueXY(columnIndex, rowIndex));
-
-        service = {
-            notifier: notifier,
-            onClick: this.getCellClickHandler(columnIndex, rowIndex, notifier),
-            onContextMenu: this.getCellRightClickHandler(columnIndex, rowIndex, notifier)
-        }
-
-        this.cashedCells.set(`${columnIndex}_${rowIndex}`, service);
-        return service;
-    }
-
-    getCellClickHandler(columnIndex: number, rowIndex: number, notifier: Subject<MapCellValue>) {
+    getCellClickHandler(columnIndex: number, rowIndex: number): () => MapCellValue | undefined {
         return () => {
             if (this.gameState.value !== GameState.InGame) {
                 return;
@@ -149,16 +127,14 @@ export class MinesweeperMap {
             }
 
             if (this.firstClick && this.emptyCellIndex && cellValue === CellValue.mine) {
-                const i = this.getIndex(columnIndex, rowIndex)!;
-                Atomics.store(this._chunkedArray, i, Atomics.exchange(this._chunkedArray, this.emptyCellIndex, Atomics.load(this._chunkedArray, i)));
-                const emptyCellCol = this.emptyCellIndex % this._width;
-                const emptyCellRow = (this.emptyCellIndex - emptyCellCol) / this._width;
-                const emptyCellService = this.cashedCells.get(`${emptyCellCol}_${emptyCellRow}`);
-                if (emptyCellService) {
-                    emptyCellService.notifier.next(cellValue);
-                }
+                this.gameState.next(GameState.Refreshing);
+
+                this.setCellValue(this.emptyCellIndex, CellValue.mine);
+
+                this.setCellValueXY(columnIndex, rowIndex, this.calculateNeighbours(columnIndex, rowIndex));
+
                 cellValue = this.getCellValueXY(columnIndex, rowIndex);
-                notifier.next(cellValue);
+
                 [
                     this.getIndex(columnIndex - 1, rowIndex - 1),
                     this.getIndex(columnIndex - 1, rowIndex + 1),
@@ -179,61 +155,93 @@ export class MinesweeperMap {
                         return;
                     }
 
-                    neighbourValue -= 1;
+                    this.setCellValue(neighbour, neighbourValue - 1);
+                });
 
-                    this.setCellValue(neighbour,neighbourValue )
-                    const columnIndex = neighbour % this._width;
-                    const rowIndex = (neighbour - columnIndex) / this._width;
+                const emptyCellCol = this.emptyCellIndex % this._width;
+                const emptyCellRow = (this.emptyCellIndex - emptyCellCol) / this._width;
 
-                    const service = this.cashedCells.get(`${columnIndex}_${rowIndex}`);
-                    if (service) {
-                        service.notifier.next(neighbourValue);
+                [
+                    this.getIndex(emptyCellCol - 1, emptyCellRow - 1),
+                    this.getIndex(emptyCellCol - 1, emptyCellRow + 1),
+                    this.getIndex(emptyCellCol + 1, emptyCellRow - 1),
+                    this.getIndex(emptyCellCol + 1, emptyCellRow + 1),
+                    this.getIndex(emptyCellCol, emptyCellRow - 1),
+                    this.getIndex(emptyCellCol, emptyCellRow + 1),
+                    this.getIndex(emptyCellCol + 1, emptyCellRow),
+                    this.getIndex(emptyCellCol - 1, emptyCellRow),
+                ].forEach((neighbour) => {
+                    if (neighbour === undefined) {
+                        return;
                     }
-                })
+
+                    let neighbourValue = this.getCellValue(neighbour);
+
+                    if (isMine(neighbourValue)) {
+                        return;
+                    }
+
+                    this.setCellValue(neighbour, neighbourValue + 1);
+                });
             }
 
             this.firstClick = false;
+
+            if (cellValue === CellValue.mine) {
+                this.gameState.next(GameState.Lost);
+                return;
+            }
 
 
             if (cellValue !== CellValue.empty) {
                 const newCellValue = cellValue + 10;
                 this.setCellValueXY(columnIndex, rowIndex, newCellValue);
-                notifier.next(newCellValue);
                 this.cellsLeftToOpen.next(this.cellsLeftToOpen.value - 1);
-                return;
+                // @ts-ignore
+                if (this.gameState.value === GameState.Refreshing) {
+                    this.gameState.next(GameState.InGame)
+                }
+                return newCellValue;
             }
 
+            this.gameState.next(GameState.Refreshing);
+            const t0 = performance.now();
             this.chainOpen({columnIndex, rowIndex});
+            console.log(`Chain open performed in ${performance.now() - t0}.`);
+            this.gameState.next(GameState.InGame);
         }
     }
 
-    getCellRightClickHandler(columnIndex: number, rowIndex: number, notifier: Subject<MapCellValue>) {
+    getCellContextMenuHandler(columnIndex: number, rowIndex: number): () => MapCellValue | undefined {
         return () => {
             if (this.gameState.value !== GameState.InGame) {
                 return;
             }
+
             const cellValue = this.getCellValueXY(columnIndex, rowIndex);
             if (isCellValueOpen(cellValue)) {
                 return;
             }
 
+            let newCellValue;
+
             if (isCellValueFlag(cellValue)) {
                 if (this.mineCountSubj.value === this._totalMineCount) {
                     return;
                 }
-                const newCellValue = cellValue - 20;
+                newCellValue = cellValue - 20;
                 this.setCellValueXY(columnIndex, rowIndex, newCellValue);
-                notifier.next(newCellValue);
                 this.mineCountSubj.next(this.mineCountSubj.value + 1);
             } else {
                 if (this.mineCountSubj.value === 0) {
                     return;
                 }
-                const newCellValue = cellValue + 20;
+                newCellValue = cellValue + 20;
                 this.setCellValueXY(columnIndex, rowIndex, newCellValue);
-                notifier.next(newCellValue);
                 this.mineCountSubj.next(this.mineCountSubj.value - 1);
             }
+
+            return newCellValue;
         };
     }
 
@@ -256,12 +264,12 @@ export class MinesweeperMap {
     }
 
     setCellValue(index: number, value: MapCellValue) {
-        Atomics.store(this._chunkedArray, index, value);
+        Atomics.store(this._map, index, value);
     }
 
 
     getCellValue(index: number): MapCellValue {
-        return Atomics.load(this._chunkedArray, index);
+        return Atomics.load(this._map, index);
     }
 
     async calculateNeighboursInRange(columnRange: { start: number, end: number }, rowRange: { start: number, end: number }) {
@@ -279,6 +287,10 @@ export class MinesweeperMap {
         );
         const t1 = performance.now();
         console.log(`Range calculated in ${t1 - t0}`);
+    }
+
+    private calculateNeighbours(columnIndex: number, rowIndex: number) {
+        return calculateNeighbours(this._map, columnIndex, rowIndex, this._width, this._height);
     }
 
     private chainOpen(initiator: { columnIndex: number, rowIndex: number }) {
@@ -305,7 +317,6 @@ export class MinesweeperMap {
             }
 
             this.setCellValue(index, cellValue + 10);
-            this.cashedCells.get(`${columnIndex}_${rowIndex}`)?.notifier.next(cellValue + 10);
             this.cellsLeftToOpen.next(this.cellsLeftToOpen.value - 1);
 
             if (cellValue !== CellValue.empty) {

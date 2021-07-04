@@ -4,13 +4,13 @@ import {Subject, useSubject} from "../../core/subject";
 import {AppStoreEntries} from "../../core/store/types/appStore";
 import {useStoreState} from "../../core/store/store";
 import {GameState} from "../../core/store/types/gameState";
+import {MapOptions} from "../../core/store/types/mapOptions";
+import {LocalStorage} from "../../core/utils/localStorage";
 
 export const SettingsDialog = React.memo<SettingsDialogProps>(function SettingsDialog({className, openSubj}) {
     const [open, setOpen] = useSubject(openSubj);
 
-    const [widthState, setWidthState] = useStoreState<number>(AppStoreEntries.width);
-    const [heightState, setHeightState] = useStoreState<number>(AppStoreEntries.height);
-    const [mineCountState, setMineCountState] = useStoreState<number>(AppStoreEntries.mineCount);
+    const [{width: widthState, height: heightState, mineCount: mineCountState}, setMapOptions] = useStoreState<MapOptions>(AppStoreEntries.mapOptions);
     const [gameState, setGameState] = useStoreState<GameState>(AppStoreEntries.gameState)
 
     const [width, setWidth] = useState(widthState.toString());
@@ -106,12 +106,14 @@ export const SettingsDialog = React.memo<SettingsDialogProps>(function SettingsD
         if (!!widthErrors.length || !!heightErrors.length || !!mineCountErrors.length) {
             return;
         }
-        setWidthState(Number(width));
-        localStorage.setItem(AppStoreEntries.width.toString(), width);
-        setHeightState(Number(height));
-        localStorage.setItem(AppStoreEntries.height.toString(), height);
-        setMineCountState(Number(mineCount));
-        localStorage.setItem(AppStoreEntries.mineCount.toString(), mineCount);
+        const newMapOptions: MapOptions = {
+            width: Number(width),
+            height: Number(height),
+            mineCount: Number(mineCount),
+        };
+
+        LocalStorage.setMapOptions(newMapOptions);
+        setMapOptions(newMapOptions);
 
         setOpen(false);
         if (gameState !== GameState.Pending) {
