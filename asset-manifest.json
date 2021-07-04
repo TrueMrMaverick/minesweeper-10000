@@ -1,28 +1,28 @@
 {
   "files": {
-    "main.css": "/static/css/main.8555e8b1.chunk.css",
-    "main.js": "/static/js/main.aa53a44e.chunk.js",
-    "main.js.map": "/static/js/main.aa53a44e.chunk.js.map",
-    "runtime-main.js": "/static/js/runtime-main.e3dc788a.js",
-    "runtime-main.js.map": "/static/js/runtime-main.e3dc788a.js.map",
-    "static/js/2.efadf592.chunk.js": "/static/js/2.efadf592.chunk.js",
-    "static/js/2.efadf592.chunk.js.map": "/static/js/2.efadf592.chunk.js.map",
-    "static/js/3.677a6215.chunk.js": "/static/js/3.677a6215.chunk.js",
-    "static/js/3.677a6215.chunk.js.map": "/static/js/3.677a6215.chunk.js.map",
-    "index.html": "/index.html",
-    "static/css/main.8555e8b1.chunk.css.map": "/static/css/main.8555e8b1.chunk.css.map",
-    "static/js/0.15b738ed.chunk.worker.js": "/static/js/0.15b738ed.chunk.worker.js",
-    "static/js/0.15b738ed.chunk.worker.js.map": "/static/js/0.15b738ed.chunk.worker.js.map",
-    "static/js/2.efadf592.chunk.js.LICENSE.txt": "/static/js/2.efadf592.chunk.js.LICENSE.txt",
-    "static/media/happy.723f4728.svg": "/static/media/happy.723f4728.svg",
-    "static/media/sad.d8d4f23b.svg": "/static/media/sad.d8d4f23b.svg",
-    "static/media/surprised.8cc9b2ea.svg": "/static/media/surprised.8cc9b2ea.svg",
-    "static/media/victorious.fc8a5835.svg": "/static/media/victorious.fc8a5835.svg"
+    "main.css": "/minesweeper-10000/static/css/main.8555e8b1.chunk.css",
+    "main.js": "/minesweeper-10000/static/js/main.82dd039a.chunk.js",
+    "main.js.map": "/minesweeper-10000/static/js/main.82dd039a.chunk.js.map",
+    "runtime-main.js": "/minesweeper-10000/static/js/runtime-main.d65822e1.js",
+    "runtime-main.js.map": "/minesweeper-10000/static/js/runtime-main.d65822e1.js.map",
+    "static/js/2.efadf592.chunk.js": "/minesweeper-10000/static/js/2.efadf592.chunk.js",
+    "static/js/2.efadf592.chunk.js.map": "/minesweeper-10000/static/js/2.efadf592.chunk.js.map",
+    "static/js/3.677a6215.chunk.js": "/minesweeper-10000/static/js/3.677a6215.chunk.js",
+    "static/js/3.677a6215.chunk.js.map": "/minesweeper-10000/static/js/3.677a6215.chunk.js.map",
+    "index.html": "/minesweeper-10000/index.html",
+    "static/css/main.8555e8b1.chunk.css.map": "/minesweeper-10000/static/css/main.8555e8b1.chunk.css.map",
+    "static/js/0.f44a241c.chunk.worker.js": "/minesweeper-10000/static/js/0.f44a241c.chunk.worker.js",
+    "static/js/0.f44a241c.chunk.worker.js.map": "/minesweeper-10000/static/js/0.f44a241c.chunk.worker.js.map",
+    "static/js/2.efadf592.chunk.js.LICENSE.txt": "/minesweeper-10000/static/js/2.efadf592.chunk.js.LICENSE.txt",
+    "static/media/happy.723f4728.svg": "/minesweeper-10000/static/media/happy.723f4728.svg",
+    "static/media/sad.d8d4f23b.svg": "/minesweeper-10000/static/media/sad.d8d4f23b.svg",
+    "static/media/surprised.8cc9b2ea.svg": "/minesweeper-10000/static/media/surprised.8cc9b2ea.svg",
+    "static/media/victorious.fc8a5835.svg": "/minesweeper-10000/static/media/victorious.fc8a5835.svg"
   },
   "entrypoints": [
-    "static/js/runtime-main.e3dc788a.js",
+    "static/js/runtime-main.d65822e1.js",
     "static/js/2.efadf592.chunk.js",
     "static/css/main.8555e8b1.chunk.css",
-    "static/js/main.aa53a44e.chunk.js"
+    "static/js/main.82dd039a.chunk.js"
   ]
 }
