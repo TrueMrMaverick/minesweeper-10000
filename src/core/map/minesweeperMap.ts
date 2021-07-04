@@ -144,6 +144,7 @@ export class MinesweeperMap {
 
             // Handle loose
             if (cellValue === CellValue.mine) {
+                this.timer.stop();
                 this.gameState.next(GameState.Lost);
                 return;
             }
